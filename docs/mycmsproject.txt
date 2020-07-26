@@ -1,0 +1,215 @@
+## create the website directory
+
+mkdir www.mycmsproject.com
+cd www.mycmsproject.com
+
+## create a virtualenv
+
+virtualenv venv
+source venv/bin/activate
+
+
+## Create the django project and install mycms
+django-admin startproject mycmsproject
+pip install mycms
+
+#Current tree
+
+we should now have a directory tree as follows:
+
+├── mycmsproject
+│   ├── db.sqlite3
+│   ├── manage.py
+│   └── mycmsproject
+│       ├── __init__.py
+│       ├── __pycache__
+│       ├── settings.py
+│       ├── urls.py
+│       └── wsgi.py
+└── venv
+
+#Edit settings.py in mycmsproject/mycmsproject and add mycms such that it looks as follows:
+
+INSTALLED_APPS = [ 
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework.authtoken',
+    'mycms',
+]
+
+And at the bottom add the settings for Haystack and REST_FRAMEWORK
+
+import os
+HAYSTACK_CONNECTIONS = {
+    'default': {
+        'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
+        'PATH': os.path.join(os.path.dirname(__file__), 'whoosh_index'),
+    },
+}
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 5,
+    'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend',)
+
+
+}
+
+#Configure Dynamic Paths
+
+At the top of the settings.py , add
+
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PARENT_DIR = Path(BASE_DIR).parent.as_posix()
+DBPATH = os.path.join(BASE_DIR, 'db.sqlite3')
+
+and update TEMPLATES such that it looks like
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR,"templates"),os.path.join(BASE_DIR,"mockups")],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+
+#Run migration and create admin user
+
+python mycmsproject/manage.py migrate
+python mycmsproject/manage.py createsuperuser
+
+#Check the Admin page
+
+Open a browser and go to http://127.0.0.1:8000/admin  and you should be able to login to the admin pages and 
+see that our MyCMS database tables are already there. 
+
+
+##Now we need to create or adapt our base templates.  For this exercise we shall be creating our website from the default bootstrap 4 templates
+
+#Going forwards we shall work inside the directory mycmsproject
+
+cd mycmsproject
+
+create a static dir
+create a templates dir
+
+
+### Create the base.html
+
+Inside the templates dir, create a base.html. Note that this is the most basic Bootstrap4 template , and is based on the QuickStart from the bootstrap website. 
+
+The difference is that we have added template blocks. Django provides as template inheritance and MyCMS makes extensive use of template ineheritance. 
+
+The main content is inside a template block called   {%block MAIN_CANVAS %} and inside it is another block called PageContent. This allows us 
+to create child pages where we might want to modify only the inner contents. 
+
+And put the contents as
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+	<title>{%block TITLE %}mycmsproject{%endblock TITLE %}</title>
+  </head>
+  <body>
+
+  <!-- Page Content -->
+  {%block BASE_CONTAINER %}
+    {%block PAGE_HEADER %}
+    <h1> Header Content Bar will go here</h1>
+    {%endblock PAGE_HEADER %}
+
+    {%block MAIN_CANVAS %}
+        {%block PAGE_CONTENT %}
+
+	<h1>Hello World</h1>
+
+        {%endblock PAGE_CONTENT %}
+
+    {%endblock MAIN_CANVAS %}
+  {%endblock BASE_CONTAINER %}
+ 
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  </body>
+</html>
+
+
+
+
+
+
+
+### Add the urls
+
+Edit mycmsproject/urls.py
+
+
+from django.contrib import admin
+from django.urls import path
+
+urlpatterns = [ 
+    path('admin/', admin.site.urls),
+]
+
+from django.conf.urls import url,include
+from django.contrib import admin
+from mycms.views import CMSFrontPage
+from mycms.views import CMSLoginView
+from mycms.views import CMSLogoutView
+from mycms.views import CMSSitemap
+
+#from django.contrib.sitemaps.views import sitemap
+#from .views import TemplateSampleLoader
+
+
+urlpatterns = [ 
+    url(r'^admin/', admin.site.urls),
+    url(r'^cms/',include('mycms.urls')),
+    url(r'^$', CMSFrontPage.as_view()),
+]
+~                      
+
+# If we start the website now, we have a basic "Hello World" 
+
+
+
+
+
+#
+
+
+
+
+
